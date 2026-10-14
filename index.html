@@ -12,7 +12,7 @@
   h1{letter-spacing:.18em;margin:0 0 8px;font-size:clamp(30px,7vw,52px)}
   h1 span{color:#ff334f}
   p{line-height:1.55;color:#b8c7d7}
-  button{border:0;border-radius:8px;padding:14px 22px;background:#ff334f;color:white;font-weight:800;font-size:16px}
+  button{border:0;border-radius:8px;padding:14px 22px;background:#ff334f;color:white;font-weight:800;font-size:16px;margin:5px} button.secondary{background:#273847;border:1px solid #526575}
   #hint{font-size:12px;color:#8799aa}
   #hud{position:fixed;z-index:5;left:14px;top:12px;color:white;text-shadow:0 2px 4px #000;font:700 14px Arial;pointer-events:none}
   #reticle{position:fixed;z-index:5;left:50%;top:50%;width:8px;height:8px;border:1px solid #fff;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;opacity:.7} #reticle.hit{border-color:#ff334f;background:#ff334f;box-shadow:0 0 12px #ff334f}
@@ -25,7 +25,8 @@
     <p>A tiny room-scale VR shooter prototype. Red targets move only when you move — stop, aim, and fire.</p>
     <p><b>In headset:</b> press Enter VR, allow the session, then use the right controller trigger to shoot. Move your head to advance time; stay still to slow the world.</p>
     <p><b>Phone preview:</b> swipe to aim and tap to shoot. In VR, aim the right controller and squeeze its trigger.</p>
-    <button id="start">START PREVIEW</button>
+    <button id="enterVr">ENTER QUEST 2 VR</button><button id="start" class="secondary">START FLAT PREVIEW</button>
+    <p id="vrStatus" role="status">For headset mode, use Enter Quest 2 VR while viewing this page in the headset browser.</p>
     <p id="hint">For headset VR, host this HTML on an HTTPS website, then open it in your headset browser.</p>
   </div>
 </div>
@@ -37,7 +38,7 @@
   renderer="antialias: false; colorManagement: true; physicallyCorrectLights: false; sortObjects: true; precision: mediump"
   background="color: #080d14"
   vr-mode-ui="enabled: true"
-  webxr="optionalFeatures: local-floor, bounded-floor"
+  webxr="referenceSpaceType: local-floor; optionalFeatures: bounded-floor"
   loading-screen="enabled: false">
 
   <a-entity light="type: ambient; intensity: 0.8; color: #b9d4ff"></a-entity>
@@ -70,8 +71,8 @@
   </a-entity>
 
   <!-- Controllers are automatically tracked in compatible WebXR browsers. -->
-  <a-entity id="leftHand" laser-controls="hand: left" raycaster="objects: .target; far: 25" line="color: #7d91a4; opacity: 0.35"></a-entity>
-  <a-entity id="rightHand" laser-controls="hand: right; model: true" line="color: #ff334f; opacity: 0.15">
+  <a-entity id="leftHand" meta-touch-controls="hand: left" line="color: #7d91a4; opacity: 0.2"></a-entity>
+  <a-entity id="rightHand" meta-touch-controls="hand: right">
     <a-entity id="vrGun" position="0 -0.035 -0.16" rotation="0 0 0">
       <a-box position="0 0 0" width="0.075" height="0.085" depth="0.24" color="#151a20"></a-box>
       <a-box position="0 0.035 -0.095" width="0.045" height="0.045" depth="0.18" color="#465461"></a-box>
@@ -205,12 +206,43 @@
   });
   document.addEventListener('pointerup', () => { drag = null; });
 
-  scene.addEventListener('enter-vr', () => { desktopGun.setAttribute('visible',false); });
-  scene.addEventListener('exit-vr', () => { desktopGun.setAttribute('visible',true); });
+  scene.addEventListener('enter-vr', () => {
+    started = true;
+    desktopGun.setAttribute('visible',false);
+    overlay.style.display = 'none';
+    lastPos = camera.object3D.position.clone();
+    lastRot = camera.object3D.rotation.clone();
+  });
+  scene.addEventListener('exit-vr', () => {
+    desktopGun.setAttribute('visible',true);
+    if (started) overlay.style.display = 'none';
+  });
 
   scene.addEventListener('loaded', () => {
     resetTargets();
     desktopGun.setAttribute('visible',true);
+  });
+
+  document.querySelector('#enterVr').addEventListener('click', () => {
+    const status = document.querySelector('#vrStatus');
+    if (!navigator.xr) {
+      status.textContent = 'WebXR is unavailable in this browser. Open the published HTTPS Pages URL directly in Meta Quest Browser.';
+      return;
+    }
+    started = true;
+    status.textContent = 'Starting VR… accept the browser prompt if it appears.';
+    // Request VR immediately inside the button click. An awaited support check
+    // first can consume the browser's transient user activation.
+    try {
+      const vrResult = scene.enterVR();
+      if (vrResult && typeof vrResult.catch === 'function') {
+        vrResult.catch(err => {
+          status.textContent = 'Could not enter VR: ' + (err && err.message ? err.message : 'session request failed') + '. Confirm this is the HTTPS GitHub Pages URL in Quest Browser.';
+        });
+      }
+    } catch (err) {
+      status.textContent = 'Could not enter VR: ' + (err && err.message ? err.message : 'session request failed') + '. Confirm this is the HTTPS GitHub Pages URL in Quest Browser.';
+    }
   });
 
   AFRAME.registerComponent('game-core', {
