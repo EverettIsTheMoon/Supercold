@@ -70,9 +70,8 @@
     </a-camera>
   </a-entity>
 
-  <!-- Controllers are automatically tracked in compatible WebXR browsers. -->
-  <a-entity id="leftHand" meta-touch-controls="hand: left; model: true"></a-entity>
-  <a-entity id="rightHand" meta-touch-controls="hand: right; model: true">
+  <!-- The gun is parented to the LEFT Touch controller so it follows that hand. -->
+  <a-entity id="leftHand" meta-touch-controls="hand: left; model: true">
     <a-entity id="vrGun" position="0 -0.025 -0.12" rotation="-8 0 0" visible="true">
       <a-box position="0 0 0" width="0.075" height="0.085" depth="0.24" color="#151a20"></a-box>
       <a-box position="0 0.035 -0.095" width="0.045" height="0.045" depth="0.18" color="#465461"></a-box>
@@ -81,6 +80,7 @@
       <a-box position="0 0.055 0.01" width="0.025" height="0.012" depth="0.07" color="#ff334f"></a-box>
     </a-entity>
   </a-entity>
+  <a-entity id="rightHand" meta-touch-controls="hand: right; model: true"></a-entity>
 
   <a-entity id="targets"></a-entity>
 </a-scene>
@@ -91,7 +91,7 @@
   const targetsRoot = document.querySelector('#targets');
   const camera = document.querySelector('#cam');
   const rig = document.querySelector('#rig');
-  const rightHand = document.querySelector('#rightHand');
+  const leftHand = document.querySelector('#leftHand');
   const scoreEl = document.querySelector('#score');
   const timeEl = document.querySelector('#time');
   const overlay = document.querySelector('#overlay');
@@ -174,8 +174,8 @@
 
   function fireFromController() {
     if (!scene.is('vr-mode')) return;
-    const obj = rightHand.object3D;
-    if (!obj || !rightHand.components['meta-touch-controls']) return;
+    const obj = leftHand.object3D;
+    if (!obj || !leftHand.components['meta-touch-controls']) return;
     obj.updateMatrixWorld(true);
     // Aim from the controller's tracked pose, not the headset/camera pose.
     const q = obj.getWorldQuaternion(new THREE.Quaternion());
@@ -185,8 +185,8 @@
     vA.add(vDir.clone().multiplyScalar(0.18));
     shoot(vA.clone(), vDir.clone());
   }
-  rightHand.addEventListener('triggerdown', fireFromController);
-  rightHand.addEventListener('controllerconnected', () => {
+  leftHand.addEventListener('triggerdown', fireFromController);
+  leftHand.addEventListener('controllerconnected', () => {
     const gun = document.querySelector('#vrGun');
     if (gun) gun.setAttribute('visible', true);
   });
