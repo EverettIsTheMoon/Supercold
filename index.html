@@ -5,16 +5,30 @@
 <title>SUPERCOLD</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  html,body{margin:0;height:100%;overflow:hidden;background:#eef3fa;font-family:system-ui,sans-serif}
+  html,body{margin:0;height:100%;overflow:hidden;background:#07152f;font-family:system-ui,sans-serif}
   canvas{display:block}
-  #ui{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(238,243,250,.94);z-index:5;text-align:center;color:#0a1f5c;padding:20px}
-  #ui h1{font-size:72px;letter-spacing:.14em;margin:0;color:#1f5bff}
+  #ui{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(5,15,39,.94);z-index:5;text-align:center;color:#dceaff;padding:20px}
+  #ui h1{font-size:72px;letter-spacing:.14em;margin:0;color:#3d8bff}
   #ui p{margin:0;max-width:600px;line-height:1.5}
-  #ui button{font-size:22px;padding:14px 34px;border:0;border-radius:10px;background:#1f5bff;color:#fff;cursor:pointer;letter-spacing:.06em}
-  #ui button.alt{background:#fff;color:#1f5bff;border:2px solid #1f5bff}
-  #ui select{font-size:18px;padding:8px 12px;border-radius:8px;border:2px solid #1f5bff;color:#0a1f5c;background:#fff}
+  #ui button{font-size:22px;padding:14px 34px;border:0;border-radius:10px;background:#236bff;color:#fff;cursor:pointer;letter-spacing:.06em}
+  #ui button.alt{background:#102449;color:#9bc7ff;border:2px solid #3d8bff}
+  #ui select{font-size:18px;padding:8px 12px;border-radius:8px;border:2px solid #3d8bff;color:#dceaff;background:#102449}
   #hud{position:fixed;top:12px;left:14px;color:#0a1f5c;font-weight:700;letter-spacing:.08em;z-index:3;display:none;white-space:pre}
-  #cross{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px;border-radius:50%;background:#1f5bff;z-index:3;display:none}
+  #cross{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px;border-radius:50%;background:#1f5bff;z-index:3;display:none;pointer-events:none}
+  #mobileControls{display:none;position:fixed;inset:0;z-index:4;pointer-events:none;touch-action:none;font-family:system-ui,sans-serif;color:white}
+  .touchBtn{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;border:2px solid rgba(255,255,255,.65);background:rgba(15,45,110,.58);color:white;border-radius:50%;width:68px;height:68px;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px #001b5a66}
+  #movePad{pointer-events:auto;position:absolute;left:18px;bottom:22px;width:142px;height:142px;border-radius:50%;border:2px solid #ffffff88;background:#164ba344;touch-action:none}
+  #moveNub{position:absolute;width:54px;height:54px;left:42px;top:42px;border-radius:50%;background:#7db4ffbb;border:2px solid white;box-sizing:border-box}
+  #touchShoot{position:absolute;right:22px;bottom:24px;width:82px;height:82px;background:#1f5bffbb}
+  #touchSwitch{position:absolute;right:32px;bottom:120px;width:58px;height:58px}
+  #touchHint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-size:11px;text-shadow:0 1px 4px #000;opacity:.85;white-space:nowrap}
+  #fakeLoad{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#050505;color:#fff;font-family:monospace;text-align:center;letter-spacing:.12em}
+  #fakeLoad .loadTitle{font-size:clamp(28px,7vw,54px);font-weight:900}
+  #fakeLoad .loadSub{font-size:14px;color:#aaa}
+  #loadTrack{width:min(320px,72vw);height:8px;border:1px solid #777;padding:2px}
+  #loadFill{height:100%;width:0;background:#fff;animation:fakeProgress 2.2s linear forwards}
+  @keyframes fakeProgress{to{width:100%}}
+  @media (pointer:coarse){#cross{display:none!important}}
 </style>
 </head>
 <body>
@@ -24,7 +38,7 @@
   <label>Start at:
     <select id="lvl">
       <option value="0">Tutorial</option>
-      <option value="1">Level 1 - The Facility</option>
+      <option value="1" selected>Level 1 - The Facility</option>
       <option value="2">Level 2 - Outside</option>
       <option value="3">Level 3 - Toxic Facility</option>
       <option value="4">Level 4 - The Warehouse</option>
@@ -35,8 +49,10 @@
   <p id="note" style="font-size:14px;opacity:.75"></p>
   <p style="font-size:14px;opacity:.75">VR: left stick = move &bull; X / Y = snap turn &bull; left trigger = shoot &bull; left GRIP = switch weapon (all weapons are on your LEFT hand)<br>Desktop: WASD, mouse, click = shoot / swing, Q = switch weapon</p>
 </div>
+<div id="fakeLoad" aria-live="polite"><div class="loadTitle">SUPERCOLD</div><div class="loadSub" id="loadText">LOADING LEVEL...</div><div id="loadTrack"><div id="loadFill"></div></div><div class="loadSub">PLEASE WAIT</div></div>
 <div id="hud"></div>
 <div id="cross"></div>
+<div id="mobileControls" aria-label="Mobile game controls"><div id="movePad"><div id="moveNub"></div></div><button id="touchShoot" class="touchBtn" type="button">FIRE</button><button id="touchSwitch" class="touchBtn" type="button">SWAP</button><div id="touchHint">LEFT: MOVE · DRAG RIGHT SIDE: LOOK</div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -104,7 +120,7 @@ function noiseTex(base,dots,rep,size){
   }
   const t=new R.CanvasTexture(c); t.wrapS=t.wrapT=R.RepeatWrapping; t.repeat.set(rep,rep); t.anisotropy=4; return t;
 }
-const std=(color,rough)=>new R.MeshStandardMaterial({color,roughness:rough===undefined?.85:rough});
+const std=(color,rough)=>new R.MeshStandardMaterial({color,roughness:rough===undefined?.85:rough,flatShading:true});
 const solidMat=std(0xf8f9fb,.8);
 const basic=(color)=>new R.MeshBasicMaterial({color,fog:false});
 
@@ -209,8 +225,8 @@ BUILD.toxic=()=>{
   // explosive toxic barrels
   const barM=new R.MeshStandardMaterial({color:0x58c93a,roughness:.5,emissive:0x1f6a10,emissiveIntensity:.5}), bandM=basic(0xffe14a);
   [[-9,5],[9,6],[-5,-3],[5,-8],[2,2],[-10,-9],[10,-10],[0,-6],[6,-1],[-5,9]].forEach(([x,z])=>{
-    const m=new R.Group(); const body=new R.Mesh(new R.CylinderGeometry(.35,.35,1.0,14),barM); body.position.y=.5; body.castShadow=true;
-    const band=new R.Mesh(new R.CylinderGeometry(.36,.36,.12,14),bandM); band.position.y=.6;
+    const m=new R.Group(); const body=new R.Mesh(new R.CylinderGeometry(.35,.35,1.0,7),barM); body.position.y=.5; body.castShadow=true;
+    const band=new R.Mesh(new R.CylinderGeometry(.36,.36,.12,7),bandM); band.position.y=.6;
     m.add(body); m.add(band); m.position.set(x,0,z); envGroup.add(m); m.updateMatrixWorld(true);
     const box=new R.Box3().setFromObject(m); obstacles.push(box); barrels.push({m,box,x,z,alive:true});
   });
@@ -331,8 +347,11 @@ function cycleWeapon(){
 
 /* ================= game state ================= */
 const enemies=[], ebullets=[], pbullets=[], shards=[];
-let levelIdx=0, startLevel=0, wave=0, kills=0, state='intro', stateT=0, toSpawn=0, spawnT=0, ts=0.1, dead=false, deadT=0;
+let levelIdx=0, startLevel=1, wave=0, kills=0, combo=0, comboT=0, waveMod={speed:1,rate:1}, state='intro', stateT=0, toSpawn=0, spawnT=0, ts=0.1, dead=false, deadT=0;
 let desktop=false, mouseDown=false, lastShot=0, hudT=0, skipSpeed=true, firstFrame=true, turnCount=0;
+const touchCapable=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+const mobileMode=touchCapable&&matchMedia('(pointer: coarse)').matches;
+let touchMoveX=0,touchMoveY=0,touchShoot=false,movePointer=null,lookPointer=null,lastLookX=0,lastLookY=0;
 let tutStep=0, tutT=0, tutDist=0, tutTurn0=0, tutBulT=0;
 const keys={}; const prev={x:false,y:false,trig:false,grip:false};
 let leftSrc=null, leftGP=null, hasCtrl=false, lastHasCtrl=null;
@@ -415,18 +434,38 @@ function showMsg(lines,secs,mode){
 function setHud(lines){ hudP.draw(lines); hudOn=true; hudP.mesh.visible=true; }
 function hideHud(){ hudOn=false; hudP.mesh.visible=false; hudPlaced=false; }
 
+/* ================= white-room weapon pickup ================= */
+let introGun=null;
+function buildWhiteRoom(){
+  clearEnv(); scene.background=new R.Color(0xffffff); scene.fog=null;
+  const white=new R.MeshBasicMaterial({color:0xffffff,side:R.DoubleSide});
+  const floor=new R.Mesh(new R.PlaneGeometry(18,18),white); floor.rotation.x=-Math.PI/2; floor.position.y=0; envGroup.add(floor);
+  const back=new R.Mesh(new R.PlaneGeometry(18,6),white); back.position.set(0,3,-8); envGroup.add(back);
+  const left=new R.Mesh(new R.PlaneGeometry(16,6),white); left.rotation.y=Math.PI/2; left.position.set(-8,3,0); envGroup.add(left);
+  const rightWall=left.clone(); rightWall.position.x=8; rightWall.rotation.y=-Math.PI/2; envGroup.add(rightWall);
+  const ceiling=new R.Mesh(new R.PlaneGeometry(18,16),white); ceiling.rotation.x=Math.PI/2; ceiling.position.set(0,6,0); envGroup.add(ceiling);
+  introGun=buildGun(); introGun.scale.setScalar(1.35); introGun.position.set(0,1.35,-1.45); introGun.rotation.y=Math.PI; scene.add(introGun);
+  HX=7.5; HZ=7.5; rig.position.set(0,0,3); rig.rotation.set(0,0,0); toWorld();
+}
+function removeIntroGun(){ if(introGun){scene.remove(introGun); introGun=null;} }
+function revealCombatLevel(){
+  const L=LEVELS[levelIdx]; removeIntroGun(); clearEnv(); applyTheme(THEMES[L.env]); BUILD[L.env]();
+  HX=L.hx; HZ=L.hz; CEIL=L.ceil; rig.position.set(0,0,HZ-3); rig.rotation.set(0,0,0); toWorld(); skipSpeed=true;
+}
+
 /* ================= levels ================= */
 const LEVELS=[
   {name:'TUTORIAL',env:'facility',hx:12,hz:12,ceil:5,tut:true,weapons:['gun'],intro:['Learn how time works in SUPERCOLD.']},
-  {name:'LEVEL 1: THE FACILITY',env:'facility',hx:12,hz:12,ceil:5,waves:[3,4,5],types:{grunt:1},maxAlive:4,weapons:['gun'],intro:['Clear 3 waves.','Move to move time. Freeze to think.']},
-  {name:'LEVEL 2: OUTSIDE',env:'outside',hx:24,hz:24,ceil:40,waves:[4,5,6,8],types:{grunt:.4,sniper:.3,melee:.3},maxAlive:6,weapons:['gun','sword'],
-   intro:['Snipers reposition and track you.','Melee enemies charge. Grunts flank.','Time still bends to your movement.'],
-   newWeapon:'NEW: SWORD - swing fast to slice enemies AND bullets'},
-  {name:'LEVEL 3: TOXIC FACILITY',env:'toxic',hx:13,hz:13,ceil:5.5,waves:[5,6,7,9],types:{grunt:.4,sniper:.2,melee:.4},maxAlive:6,weapons:['gun','sword'],
-   intro:['Green barrels explode into toxic gas.','Shoot them near enemies. Stay clear!']},
-  {name:'LEVEL 4: THE WAREHOUSE',env:'warehouse',hx:20,hz:13,ceil:9,waves:[6,7,8,10,12],types:{grunt:.45,sniper:.3,melee:.25},maxAlive:7,weapons:['ak','sword'],
-   intro:['Big space. Lots of cover.','Use the racks and crates.'],
-   newWeapon:'NEW: AK-47 - hold the trigger for full auto'}
+  {name:'01: THE FACILITY',env:'facility',hx:12,hz:12,ceil:5,weapons:['gun'],intro:['Three targets. One tight room.','Use the pillars for cover.'],
+   encounter:[['grunt',-3,-4],['grunt',3,-7],['grunt',0,-10]]},
+  {name:'02: THE OUTSKIRTS',env:'outside',hx:24,hz:24,ceil:40,weapons:['gun','sword'],intro:['Four enemies. Watch your flanks.','Close the distance or pick them off.'],
+   newWeapon:'NEW: SWORD - slice enemies and incoming bullets',
+   encounter:[['sniper',-10,4],['grunt',-3,-5],['melee',6,-7],['grunt',10,1]]},
+  {name:'03: TOXIC STORAGE',env:'toxic',hx:13,hz:13,ceil:5.5,weapons:['gun','sword'],intro:['Four enemies among explosive barrels.','Use the environment to your advantage.'],
+   encounter:[['grunt',-4,-5],['melee',4,-5],['sniper',0,-10],['melee',8,2]]},
+  {name:'04: THE WAREHOUSE',env:'warehouse',hx:20,hz:13,ceil:9,weapons:['ak','sword'],intro:['Four enemies. Lots of cover.','Every corner is a possible ambush.'],
+   newWeapon:'NEW: AK-47 - hold fire for full auto',
+   encounter:[['sniper',-16,1],['grunt',-5,-5],['melee',7,-4],['grunt',15,2]]}
 ];
 function introLines(L){
   const inXR=renderer.xr.isPresenting;
@@ -445,32 +484,36 @@ function clearActors(){
 }
 function loadLevel(idx){
   levelIdx=idx; const L=LEVELS[idx];
-  clearEnv(); applyTheme(THEMES[L.env]); BUILD[L.env]();
-  HX=L.hx; HZ=L.hz; CEIL=L.ceil;
+  removeIntroGun();
+  if(L.tut){ clearEnv(); applyTheme(THEMES[L.env]); BUILD[L.env](); HX=L.hx; HZ=L.hz; CEIL=L.ceil; }
+  else { buildWhiteRoom(); }
   weapons=L.weapons.slice(); wIdx=0; akAmmo=30; reloadT=0; swingT=0; updateWeaponVisibility();
-  clearActors(); wave=0; kills=0; dead=false; ts=0.1; toSpawn=0;
-  rig.rotation.set(0,0,0); rig.position.set(0,0,HZ-3);
+  clearActors(); wave=0; kills=0; combo=0; comboT=0; dead=false; ts=0.1; toSpawn=0; waveMod={speed:1,rate:1};
+  if(L.tut){ rig.rotation.set(0,0,0); rig.position.set(0,0,HZ-3); }
   if(!renderer.xr.isPresenting) camera.rotation.x=0;
   toWorld(); skipSpeed=true;
   state='intro'; hideHud();
-  showMsg(introLines(L),0,'intro');
+  if(L.tut) showMsg(introLines(L),0,'intro'); else { msg.mesh.visible=false; msgT=0; }
 }
 
 /* ================= enemies ================= */
-const bodyMat=new R.MeshStandardMaterial({color:0x2f6bff,roughness:.55,emissive:0x0a2a9a,emissiveIntensity:.35});
-const sniperMat=new R.MeshStandardMaterial({color:0x1a3fb0,roughness:.55,emissive:0x081a66,emissiveIntensity:.4});
-const meleeMat=new R.MeshStandardMaterial({color:0x4a95ff,roughness:.5,emissive:0x1a5acc,emissiveIntensity:.5});
-const headMat=new R.MeshStandardMaterial({color:0x6aa0ff,roughness:.5,emissive:0x1a3fa0,emissiveIntensity:.3});
+const bodyMat=new R.MeshStandardMaterial({color:0x174cff,roughness:.8,flatShading:true,emissive:0x061b70,emissiveIntensity:.3});
+const sniperMat=new R.MeshStandardMaterial({color:0x1236a8,roughness:.8,flatShading:true,emissive:0x081a66,emissiveIntensity:.3});
+const meleeMat=new R.MeshStandardMaterial({color:0x3585ff,roughness:.8,flatShading:true,emissive:0x103b9c,emissiveIntensity:.35});
+const headMat=new R.MeshStandardMaterial({color:0x68a4ff,roughness:.8,flatShading:true,emissive:0x163c9a,emissiveIntensity:.25});
 const eGunMat=new R.MeshStandardMaterial({color:0x0b1636,roughness:.4});
 const bladeMat=new R.MeshBasicMaterial({color:0x8fe9ff,fog:false});
-const torsoGeo=new R.BoxGeometry(0.5,0.7,0.28), headGeo=new R.SphereGeometry(0.14,14,10);
-const legGeo=new R.BoxGeometry(0.17,0.78,0.17), armGeo=new R.BoxGeometry(0.12,0.6,0.12);
+// Every body part uses low-poly icosahedral geometry, not just the head.
+const torsoGeo=new R.IcosahedronGeometry(0.5,0), headGeo=new R.IcosahedronGeometry(0.5,0);
+const legGeo=new R.IcosahedronGeometry(0.5,0), armGeo=new R.IcosahedronGeometry(0.5,0);
 const eGunGeo=new R.BoxGeometry(0.06,0.3,0.06), rifleGeo=new R.BoxGeometry(0.06,0.75,0.06), bladeGeo=new R.BoxGeometry(0.05,0.95,0.02);
 
 function makeEnemy(type,x,z){
   const g=new R.Group(); g.position.set(x,0,z);
   const bm=type==='sniper'?sniperMat:type==='melee'?meleeMat:bodyMat;
-  const add=(geo,mat,px,py,pz,parent)=>{const m=new R.Mesh(geo,mat);m.position.set(px,py,pz);m.castShadow=true;m.receiveShadow=true;(parent||g).add(m);return m;};
+  const add=(geo,mat,px,py,pz,parent)=>{const m=new R.Mesh(geo,mat);m.position.set(px,py,pz);m.castShadow=true;m.receiveShadow=true;
+    if(geo===torsoGeo)m.scale.set(.48,.66,.32); else if(geo===headGeo)m.scale.set(.34,.34,.34); else if(geo===legGeo)m.scale.set(.18,.43,.18); else if(geo===armGeo)m.scale.set(.14,.34,.14);
+    (parent||g).add(m);return m;};
   add(torsoGeo,bm,0,1.1,0); add(headGeo,headMat,0,1.62,0);
   const legL=new R.Group(); legL.position.set(-0.12,0.78,0); g.add(legL); add(legGeo,bm,0,-0.39,0,legL);
   const legR=new R.Group(); legR.position.set(0.12,0.78,0); g.add(legR); add(legGeo,bm,0,-0.39,0,legR);
@@ -524,18 +567,55 @@ function addShard(m,v,av,life,s,grav){
   while(shards.length>380){ const o=shards.shift(); scene.remove(o.m); }
 }
 const shardGeo=[0.07,0.1,0.14,0.18].map(s=>new R.BoxGeometry(s,s,s));
+function dismemberEnemy(e,part){
+  const p=e.g.position.clone();
+  const local={
+    head:new R.Vector3(0,1.62,0),
+    armL:new R.Vector3(-.34,1.12,0),
+    armR:new R.Vector3(.34,1.12,.03),
+    legL:new R.Vector3(-.12,.38,0),
+    legR:new R.Vector3(.12,.38,0),
+    torso:new R.Vector3(0,1.1,0)
+  }[part]||new R.Vector3(0,1.1,0);
+  local.applyQuaternion(e.g.quaternion).add(p);
+  // The hit part is represented by the directional burst in killEnemy; the full body dissolves.
+  // Armed enemies drop their angular weapon when their weapon arm is hit.
+  if(part==='armR'&&e.type!=='melee'){
+    const gun=new R.Mesh(e.type==='sniper'?rifleGeo:eGunGeo,eGunMat);
+    gun.position.copy(local).add(new R.Vector3(.12,-.15,0));
+    addShard(gun,new R.Vector3((Math.random()-.5)*3,2,(Math.random()-.5)*3),
+      new R.Vector3(5,8,4),5,.12);
+  }
+  killEnemy(e);
+}
+function hitEnemyPart(e,p){
+  const q=p.clone().sub(e.g.position).applyQuaternion(e.g.quaternion.clone().invert());
+  let part='torso';
+  if(q.y>1.43) part='head';
+  else if(q.y<.78) part=q.x<0?'legL':'legR';
+  else if(q.y>0.82&&Math.abs(q.x)>.25) part=q.x<0?'armL':'armR';
+  dismemberEnemy(e,part);
+}
 function killEnemy(e){
-  const ep=e.g.position;
-  for(let i=0;i<26;i++){
-    const gi=Math.floor(Math.random()*4);
-    const m=new R.Mesh(shardGeo[gi],Math.random()<.2?headMat:(e.type==='sniper'?sniperMat:e.type==='melee'?meleeMat:bodyMat));
-    m.position.set(ep.x+(Math.random()-.5)*0.4,0.1+Math.random()*1.6,ep.z+(Math.random()-.5)*0.4);
-    addShard(m,new R.Vector3((Math.random()-.5)*3,Math.random()*3+1,(Math.random()-.5)*3),new R.Vector3(Math.random()*8,Math.random()*8,Math.random()*8),4,[.07,.1,.14,.18][gi]);
+  const ep=e.g.position.clone();
+  // Disintegrate into many tiny faceted particles that burst outward, then arc down under gravity.
+  const base=e.type==='sniper'?sniperMat:e.type==='melee'?meleeMat:bodyMat;
+  for(let i=0;i<54;i++){
+    const size=.035+Math.random()*.085;
+    const geo=new R.IcosahedronGeometry(size,0);
+    const mat=(Math.random()<.22?headMat:base).clone();
+    const m=new R.Mesh(geo,mat);
+    const origin=new R.Vector3((Math.random()-.5)*.58,.18+Math.random()*1.55,(Math.random()-.5)*.42).applyQuaternion(e.g.quaternion).add(ep);
+    m.position.copy(origin);
+    const dir=new R.Vector3((Math.random()-.5)*2.4,.25+Math.random()*1.4,(Math.random()-.5)*2.4).normalize();
+    const speed=2.2+Math.random()*5.8;
+    addShard(m,dir.multiplyScalar(speed),new R.Vector3(Math.random()*13,Math.random()*13,Math.random()*13),1.8+Math.random()*1.3,size,4.8+Math.random()*3);
   }
   if(e.laser){ scene.remove(e.laser); e.laser=null; }
   scene.remove(e.g);
   const i=enemies.indexOf(e); if(i>=0) enemies.splice(i,1);
-  kills++; beep(260,.25,'sawtooth',.08,-200);
+  kills++; comboT=3.2; combo++; beep(260+Math.min(combo,10)*42,.25,'sawtooth',.08,-200);
+  if(combo>=3) showMsg([{text:combo+'x COMBO!',size:78,color:'#9fe0ff'},{text:'KEEP MOVING',size:34}],.65,'front');
 }
 
 /* ================= bullets ================= */
@@ -614,7 +694,7 @@ function stepBullets(list,dts,isPlayer){
       if(isPlayer){
         for(const e of enemies){
           const ep=e.g.position, dx=p.x-ep.x, dz=p.z-ep.z;
-          if(dx*dx+dz*dz<0.16&&p.y<1.85&&p.y>0){killEnemy(e);gone=true;break;}
+          if(dx*dx+dz*dz<0.20&&p.y<1.95&&p.y>0){hitEnemyPart(e,p);gone=true;break;}
         }
       } else if(!dead&&!b.harmless){
         const dx=p.x-head.x, dz=p.z-head.z;
@@ -628,7 +708,7 @@ function hitPlayer(label){
   if(dead||state==='intro'||state==='leveldone'||state==='win') return;
   dead=true; deadT=0; state='dead'; hideHud();
   beep(140,.6,'sawtooth',.12,-90);
-  showMsg([{text:label||'SHATTERED',size:100,color:'#7fb2ff'},{text:levelIdx===0?'Try again':('WAVE '+wave+'   KILLS '+kills),size:50},{text:'PULL THE TRIGGER TO RESTART',size:40,color:'#9fe0ff'}],0,'front');
+  showMsg([{text:label||'SHATTERED',size:100,color:'#7fb2ff'},{text:levelIdx===0?'Try again':('LEVEL '+levelIdx+'   KILLS '+kills),size:50},{text:'PULL THE TRIGGER TO RESTART',size:40,color:'#9fe0ff'}],0,'front');
 }
 
 /* ---- sword ---- */
@@ -651,7 +731,7 @@ function swordCheck(dt,inXR){
     sam.copy(bladeBase).addScaledVector(bladeDir,len*k/7);
     for(const e of enemies.slice()){
       const dx=sam.x-e.g.position.x, dz=sam.z-e.g.position.z;
-      if(dx*dx+dz*dz<0.25&&sam.y>0&&sam.y<1.95){ killEnemy(e); beep(1400,.08,'triangle',.07,-600); }
+      if(dx*dx+dz*dz<0.25&&sam.y>0&&sam.y<1.95){ hitEnemyPart(e,sam); beep(1400,.08,'triangle',.07,-600); }
     }
     for(let i=ebullets.length-1;i>=0;i--){
       if(ebullets[i].m.position.distanceTo(sam)<0.3){ scene.remove(ebullets[i].m); ebullets.splice(i,1); beep(1700,.06,'triangle',.07,-900); }
@@ -724,17 +804,16 @@ function updateEnemy(e,dts,dt,bSpeed,interval){
   if(vx!==0||vz!==0){ e.phase+=dts*7; e.legL.rotation.x=Math.sin(e.phase)*0.6; e.legR.rotation.x=-Math.sin(e.phase)*0.6; }
 }
 
-/* ================= waves & tutorial ================= */
-function pickType(types){
-  let r=Math.random(), acc=0;
-  for(const k in types){ acc+=types[k]; if(r<acc) return k; }
-  return 'grunt';
-}
-function startWave(){
+/* ================= handcrafted encounters & tutorial ================= */
+function startEncounter(){
   const L=LEVELS[levelIdx];
-  wave++; toSpawn=L.waves[wave-1]; state='playing'; spawnT=0.5;
-  showMsg([{text:'WAVE '+wave+' / '+L.waves.length,size:100,color:'#7fb2ff'}],2.2,'front');
+  revealCombatLevel();
+  state='playing'; wave=1; waveMod={speed:1,rate:1};
+  // Each level has a deliberately authored enemy layout. No random wave spawns.
+  for(const spec of (L.encounter||[])) spawnEnemy(spec[0],spec[1],spec[2]);
+  msg.mesh.visible=false; msgT=0;
 }
+
 function setTutStep(n){
   tutStep=n; tutT=0; tutDist=0; tutTurn0=turnCount; tutBulT=0;
   const inXR=renderer.xr.isPresenting;
@@ -788,19 +867,20 @@ function frame(t,xf){
       if(lastHasCtrl!==hasCtrl && state==='intro'){ lastHasCtrl=hasCtrl; showMsg(introLines(LEVELS[levelIdx]),0,'intro'); }
 
       /* ---- input ---- */
-      let ix=0,iy=0,trig=false;
+      let ix=0,iy=0,trig=false,gripEdge=false;
       if(inXR&&leftGP){
         const a=leftGP.axes, ax=a.length>=4?a[2]:a[0], ay=a.length>=4?a[3]:a[1];
         ix=Math.abs(ax)>.15?ax:0; iy=Math.abs(ay)>.15?-ay:0;
         const b=leftGP.buttons;
         trig=!!(b[0]&&b[0].pressed);
         const bx=!!(b[4]&&b[4].pressed), by=!!(b[5]&&b[5].pressed), gr=!!(b[1]&&b[1].pressed);
+        gripEdge=gr&&!prev.grip;
         if(bx&&!prev.x) snapTurn(Math.PI/4);
         if(by&&!prev.y) snapTurn(-Math.PI/4);
-        if(gr&&!prev.grip) cycleWeapon();
+        if(gr&&!prev.grip&&state!=='intro') cycleWeapon();
         prev.x=bx; prev.y=by; prev.grip=gr;
       } else if(!inXR){
-        ix=(keys.KeyD?1:0)-(keys.KeyA?1:0); iy=(keys.KeyW?1:0)-(keys.KeyS?1:0); trig=mouseDown;
+        ix=mobileMode?touchMoveX:((keys.KeyD?1:0)-(keys.KeyA?1:0)); iy=mobileMode?touchMoveY:((keys.KeyW?1:0)-(keys.KeyS?1:0)); trig=mouseDown||touchShoot;
         if(cycleReq){ cycleReq=false; cycleWeapon(); }
       }
       const trigEdge=trig&&!prev.trig; prev.trig=trig;
@@ -828,9 +908,9 @@ function frame(t,xf){
       const L=LEVELS[levelIdx];
       const canFire=!dead&&(state==='playing'||state==='between'||state==='tutorial');
       if(state==='intro'){
-        if(trigEdge){
+        if((L.tut&&trigEdge)||(!L.tut&&(gripEdge||(!inXR&&trigEdge)))){
           ensureAudio(); msg.mesh.visible=false;
-          if(L.tut){ state='tutorial'; setTutStep(0); } else startWave();
+          if(L.tut){ state='tutorial'; setTutStep(0); } else startEncounter();
         }
       } else if(state==='dead'){
         deadT+=dt;
@@ -842,14 +922,12 @@ function frame(t,xf){
       } else if(state==='tutorial'){
         tutorialUpdate(dt,moved,inXR);
       } else if(state==='playing'){
-        spawnT-=dt;
-        if(toSpawn>0&&enemies.length<L.maxAlive&&spawnT<=0){ spawnEnemy(pickType(L.types)); toSpawn--; spawnT=1.0; }
-        if(toSpawn===0&&enemies.length===0){
-          if(wave>=L.waves.length){ state='leveldone'; stateT=3.5; showMsg([{text:'LEVEL COMPLETE',size:90,color:'#9fe0ff'}],3,'front'); beep(600,.25,'triangle',.07); }
-          else { state='between'; stateT=2.5; showMsg([{text:'WAVE CLEAR',size:100,color:'#9fe0ff'}],2.2,'front'); }
+        if(enemies.length===0){
+          state='leveldone'; stateT=2.4;
+          showMsg([{text:'ENCOUNTER CLEAR',size:84,color:'#9fe0ff'},
+            {text:'KILLS '+kills,size:38},{text:'NEXT LOCATION',size:30,color:'#7fb2ff'}],2.2,'front');
+          beep(600,.25,'triangle',.07);
         }
-      } else if(state==='between'){
-        stateT-=dt; if(stateT<=0) startWave();
       } else if(state==='leveldone'){
         stateT-=dt;
         if(stateT<=0){
@@ -873,8 +951,8 @@ function frame(t,xf){
       else if(!inXR){ handGroup.rotation.x=0; handGroup.rotation.z=0; }
 
       /* ---- enemies ---- */
-      const bSpeed=state==='tutorial'?4.5:Math.min(5+levelIdx*0.4+wave*0.3,9);
-      const interval=state==='tutorial'?2.8:Math.max(1.3,3.2-levelIdx*0.2-wave*0.12);
+      const bSpeed=state==='tutorial'?4.5:Math.min(5+levelIdx*0.55,8.5)*(waveMod.speed||1);
+      const interval=state==='tutorial'?2.8:Math.max(0.85,3.1-levelIdx*0.22)/(waveMod.rate||1);
       for(const e of enemies.slice()) updateEnemy(e,dts,dt,bSpeed,interval);
       swordCheck(dt,inXR);
       stepBullets(pbullets,dts,true);
@@ -907,10 +985,11 @@ function frame(t,xf){
       hudT-=dt;
       if(hudT<=0){
         hudT=0.2;
+        comboT-=dt; if(comboT<=0) combo=0;
         const w=weapons[wIdx], name=w==='ak'?'AK-47':w==='sword'?'SWORD':'PISTOL';
-        const line2=w==='ak'?(reloadT>0?'RELOADING':'AMMO '+akAmmo):('KILLS '+kills);
-        if(inXR&&hasCtrl) wrist.draw([{text:L.tut?'TUTORIAL':'WAVE '+wave,size:30,color:'#7fb2ff'},{text:name+'  '+line2,size:26},{text:'TIME '+Math.round(ts*100)+'%',size:28,color:'#9fe0ff'}]);
-        if(desktop&&!inXR) hud.textContent=(L.tut?'TUTORIAL':'WAVE '+wave+'/'+L.waves.length)+'\n'+name+'  '+line2+'\nTIME '+Math.round(ts*100)+'%';
+        const line2=(w==='ak'?(reloadT>0?'RELOADING':'AMMO '+akAmmo):('KILLS '+kills))+(combo>1?'  COMBO x'+combo:'');
+        if(inXR&&hasCtrl) wrist.draw([{text:L.tut?'TUTORIAL':'ENCOUNTER '+(levelIdx)+' / '+(LEVELS.length-1),size:30,color:'#7fb2ff'},{text:name+'  '+line2,size:26},{text:'TIME '+Math.round(ts*100)+'%',size:28,color:'#9fe0ff'}]);
+        if(desktop&&!inXR) hud.textContent=(L.tut?'TUTORIAL':'LEVEL '+levelIdx+'/'+(LEVELS.length-1))+'\n'+name+'  '+line2+'\nTIME '+Math.round(ts*100)+'%';
       }
     }
   }
@@ -922,6 +1001,8 @@ renderer.setAnimationLoop(frame);
 /* ================= UI wiring ================= */
 const ui=document.getElementById('ui'), btnVR=document.getElementById('btnVR'), btnDesk=document.getElementById('btnDesk');
 const note=document.getElementById('note'), hud=document.getElementById('hud'), cross=document.getElementById('cross'), lvlSel=document.getElementById('lvl');
+const fakeLoad=document.getElementById('fakeLoad'), loadText=document.getElementById('loadText');
+function showFakeLoading(done){ fakeLoad.style.display='flex'; loadText.textContent='LOADING LEVEL...'; const fill=document.getElementById('loadFill'); fill.style.animation='none'; void fill.offsetWidth; fill.style.animation='fakeProgress 2.2s linear forwards'; setTimeout(()=>{fakeLoad.style.display='none'; done();},2300); }
 
 // show a preview of the first level behind the menu
 clearEnv(); applyTheme(THEMES.facility); BUILD.facility();
@@ -933,22 +1014,25 @@ if(navigator.xr){
 } else note.textContent='WebXR not available here - open this file in the Quest Browser for VR.';
 
 btnVR.onclick=async()=>{
-  ensureAudio(); startLevel=parseInt(lvlSel.value,10)||0;
+  ensureAudio(); startLevel=parseInt(lvlSel.value,10); if(!Number.isFinite(startLevel)) startLevel=1;
   try{
     const s=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor']});
     await renderer.xr.setSession(s);
-    ui.style.display='none'; desktop=false; firstFrame=true;
+    ui.style.display='none'; desktop=false; firstFrame=true; showFakeLoading(()=>{});
   }catch(err){ note.textContent='Could not start VR: '+err.message; }
 };
 renderer.xr.addEventListener('sessionend',()=>{
-  ui.style.display='flex'; handGroup.visible=false; hasCtrl=false;
+  ui.style.display='flex'; document.getElementById('mobileControls').style.display='none'; handGroup.visible=false; hasCtrl=false;
   camera.position.set(0,1.6,0); camera.quaternion.identity(); rig.rotation.set(0,0,0); rig.position.set(0,0,9);
   hideHud(); msg.mesh.visible=false; firstFrame=true; state='intro';
 });
 btnDesk.onclick=()=>{
-  ensureAudio(); startLevel=parseInt(lvlSel.value,10)||0; desktop=true; firstFrame=true; ui.style.display='none';
-  hud.style.display='block'; cross.style.display='block';
-  try{ renderer.domElement.requestPointerLock(); }catch(e){}
+  ensureAudio(); startLevel=parseInt(lvlSel.value,10); if(!Number.isFinite(startLevel)) startLevel=1; desktop=true; firstFrame=true; ui.style.display='none';
+  showFakeLoading(()=>{
+    hud.style.display='block'; cross.style.display=mobileMode?'none':'block';
+    if(mobileMode){ document.getElementById('mobileControls').style.display='block'; document.getElementById('touchSwitch').style.display='flex'; }
+    else { try{ renderer.domElement.requestPointerLock(); }catch(e){} }
+  });
 };
 addEventListener('keydown',e=>{ keys[e.code]=true; if(e.code==='KeyQ'&&desktop) cycleReq=true; });
 addEventListener('keyup',e=>{keys[e.code]=false;});
@@ -964,6 +1048,23 @@ addEventListener('mousemove',e=>{
     camera.rotation.x=Math.max(-1.4,Math.min(1.4,camera.rotation.x-e.movementY*0.0022));
   }
 });
+// Touch-only controls: virtual left stick, right-side look drag, fire and weapon swap.
+if(mobileMode){
+  const pad=document.getElementById('movePad'), nub=document.getElementById('moveNub');
+  const fire=document.getElementById('touchShoot'), swap=document.getElementById('touchSwitch');
+  const resetMove=()=>{touchMoveX=touchMoveY=0;movePointer=null;nub.style.left='42px';nub.style.top='42px';};
+  pad.addEventListener('pointerdown',e=>{e.preventDefault();movePointer=e.pointerId;pad.setPointerCapture(e.pointerId);moveStick(e);});
+  pad.addEventListener('pointermove',e=>{if(e.pointerId===movePointer){e.preventDefault();moveStick(e);}});
+  pad.addEventListener('pointerup',e=>{if(e.pointerId===movePointer)resetMove();});
+  pad.addEventListener('pointercancel',resetMove);
+  function moveStick(e){const r=pad.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=47,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}touchMoveX=dx/max;touchMoveY=-dy/max;nub.style.left=(42+dx)+'px';nub.style.top=(42+dy)+'px';}
+  fire.addEventListener('pointerdown',e=>{e.preventDefault();touchShoot=true;fire.setPointerCapture(e.pointerId);});
+  const releaseFire=()=>{touchShoot=false;};fire.addEventListener('pointerup',releaseFire);fire.addEventListener('pointercancel',releaseFire);fire.addEventListener('lostpointercapture',releaseFire);
+  swap.addEventListener('pointerdown',e=>{e.preventDefault();cycleWeapon();});
+  renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&!pad.contains(e.target)&&e.target!==fire&&e.target!==swap){lookPointer=e.pointerId;lastLookX=e.clientX;lastLookY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);}});
+  renderer.domElement.addEventListener('pointermove',e=>{if(e.pointerType==='touch'&&e.pointerId===lookPointer){e.preventDefault();const dx=e.clientX-lastLookX,dy=e.clientY-lastLookY;lastLookX=e.clientX;lastLookY=e.clientY;rig.rotation.y-=dx*0.005;camera.rotation.x=Math.max(-1.4,Math.min(1.4,camera.rotation.x-dy*0.005));}});
+  const endLook=e=>{if(e.pointerId===lookPointer)lookPointer=null;};renderer.domElement.addEventListener('pointerup',endLook);renderer.domElement.addEventListener('pointercancel',endLook);
+}
 addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight);
 });
