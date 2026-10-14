@@ -1,290 +1,553 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>REDLINE VR — WebXR FPS Starter</title>
-<script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+<title>SUPERCOLD</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05080d;font-family:Arial,sans-serif}
-  #overlay{position:fixed;z-index:10;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,#18222d 0,#05080d 72%);color:#eef6ff;text-align:center;padding:24px;box-sizing:border-box}
-  #panel{max-width:560px;border:1px solid #394958;background:#0a111bdc;padding:26px;border-radius:16px;box-shadow:0 0 40px #ff263522}
-  h1{letter-spacing:.18em;margin:0 0 8px;font-size:clamp(30px,7vw,52px)}
-  h1 span{color:#ff334f}
-  p{line-height:1.55;color:#b8c7d7}
-  button{border:0;border-radius:8px;padding:14px 22px;background:#ff334f;color:white;font-weight:800;font-size:16px;margin:5px} button.secondary{background:#273847;border:1px solid #526575}
-  #hint{font-size:12px;color:#8799aa}
-  #hud{position:fixed;z-index:5;left:14px;top:12px;color:white;text-shadow:0 2px 4px #000;font:700 14px Arial;pointer-events:none}
-  #reticle{position:fixed;z-index:5;left:50%;top:50%;width:8px;height:8px;border:1px solid #fff;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;opacity:.7} #reticle.hit{border-color:#ff334f;background:#ff334f;box-shadow:0 0 12px #ff334f}
+  html,body{margin:0;height:100%;overflow:hidden;background:#eef3fa;font-family:system-ui,sans-serif}
+  canvas{display:block}
+  #ui{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(238,243,250,.94);z-index:5;text-align:center;color:#0a1f5c;padding:20px}
+  #ui h1{font-size:72px;letter-spacing:.14em;margin:0;color:#1f5bff}
+  #ui p{margin:0;max-width:560px;line-height:1.5}
+  #ui button{font-size:22px;padding:14px 34px;border:0;border-radius:10px;background:#1f5bff;color:#fff;cursor:pointer;letter-spacing:.06em}
+  #ui button.alt{background:#fff;color:#1f5bff;border:2px solid #1f5bff}
+  #hud{position:fixed;top:12px;left:14px;color:#0a1f5c;font-weight:700;letter-spacing:.08em;z-index:3;display:none;white-space:pre}
+  #cross{position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px;border-radius:50%;background:#1f5bff;z-index:3;display:none}
 </style>
 </head>
 <body>
-<div id="overlay">
-  <div id="panel">
-    <h1><span>RED</span>LINE VR</h1>
-    <p>A tiny room-scale VR shooter prototype. Red targets move only when you move — stop, aim, and fire.</p>
-    <p><b>In headset:</b> press Enter VR, allow the session, then use the right controller trigger to shoot. Move your head to advance time; stay still to slow the world.</p>
-    <p><b>Phone preview:</b> swipe to aim and tap to shoot. In VR, aim the right controller and squeeze its trigger.</p>
-    <button id="enterVr">ENTER QUEST 2 VR</button><button id="start" class="secondary">START FLAT PREVIEW</button>
-    <p id="vrStatus" role="status">For headset mode, use Enter Quest 2 VR while viewing this page in the headset browser.</p>
-    <p id="hint">For headset VR, host this HTML on an HTTPS website, then open it in your headset browser.</p>
-  </div>
+<div id="ui">
+  <h1>SUPERCOLD</h1>
+  <p>Time only moves when you move. Stand still and everything freezes.</p>
+  <button id="btnVR" style="display:none">ENTER VR</button>
+  <button id="btnDesk" class="alt">PLAY ON DESKTOP (WASD + mouse)</button>
+  <p id="note" style="font-size:14px;opacity:.75"></p>
+  <p style="font-size:14px;opacity:.75">VR: left stick = move &bull; X / Y = snap turn &bull; left trigger = shoot (gun is on your LEFT hand)</p>
 </div>
-<div id="hud">REDLINE VR · <span id="score">0</span> / 5 · TIME <span id="time">SLOW</span></div>
-<div id="reticle"></div>
+<div id="hud"></div>
+<div id="cross"></div>
 
-<a-scene
-  game-core
-  renderer="antialias: false; colorManagement: true; physicallyCorrectLights: false; sortObjects: true; precision: mediump"
-  background="color: #080d14"
-  vr-mode-ui="enabled: true"
-  webxr="referenceSpaceType: local-floor; optionalFeatures: bounded-floor"
-  loading-screen="enabled: false">
-
-  <a-entity light="type: ambient; intensity: 0.8; color: #b9d4ff"></a-entity>
-  <a-entity light="type: directional; intensity: 1.35; color: #ffffff" position="-2 5 3"></a-entity>
-  <a-entity light="type: point; intensity: 1.1; color: #ff284b" position="0 3 -5"></a-entity>
-
-  <!-- compact arena -->
-  <a-box position="0 -0.12 -4" width="12" height="0.2" depth="16" color="#202b37" material="roughness:0.92"></a-box>
-  <a-box position="0 2.1 -12" width="12" height="4.2" depth="0.2" color="#111b27"></a-box>
-  <a-box position="-6 2.1 -4" width="0.2" height="4.2" depth="16" color="#14202c"></a-box>
-  <a-box position="6 2.1 -4" width="0.2" height="4.2" depth="16" color="#14202c"></a-box>
-  <a-box position="0 4.2 -4" width="12" height="0.2" depth="16" color="#111923"></a-box>
-  <a-box position="-3 0.04 -4" width="0.04" height="0.02" depth="15" color="#354554"></a-box>
-  <a-box position="3 0.04 -4" width="0.04" height="0.02" depth="15" color="#354554"></a-box>
-  <a-box position="0 0.04 -8" width="11.8" height="0.02" depth="0.04" color="#354554"></a-box>
-  <a-box position="0 0.04 0" width="11.8" height="0.02" depth="0.04" color="#354554"></a-box>
-  <a-box position="-4 1.0 -6" width="1.1" height="2" depth="1.0" color="#344352"></a-box>
-  <a-box position="3.5 0.7 -9" width="1.3" height="1.4" depth="1.2" color="#344352"></a-box>
-  <a-box position="2 0.45 -3.2" width="1.4" height="0.9" depth="0.9" color="#263543"></a-box>
-
-  <a-entity id="rig" position="0 0 0">
-    <a-camera id="cam" position="0 1.65 0" wasd-controls="enabled: false" look-controls="pointerLockEnabled: false">
-      <a-entity id="desktopGun" visible="false" position="0.28 -0.25 -0.55" rotation="0 0 0">
-        <a-box position="0 0 0" width="0.13" height="0.13" depth="0.34" color="#151a20"></a-box>
-        <a-box position="0 0.055 -0.16" width="0.075" height="0.07" depth="0.27" color="#343f49"></a-box>
-        <a-box position="0 -0.11 0.06" width="0.09" height="0.18" depth="0.1" rotation="-12 0 0" color="#202832"></a-box>
-        <a-cylinder position="0 0 -0.3" rotation="90 0 0" radius="0.025" height="0.12" color="#8798a8"></a-cylinder>
-      </a-entity>
-    </a-camera>
-  </a-entity>
-
-  <!-- The gun is parented to the LEFT Touch controller so it follows that hand. -->
-  <a-entity id="leftHand" meta-touch-controls="hand: left; model: true">
-    <a-entity id="vrGun" position="0 -0.025 -0.12" rotation="-8 0 0" visible="true">
-      <a-box position="0 0 0" width="0.075" height="0.085" depth="0.24" color="#151a20"></a-box>
-      <a-box position="0 0.035 -0.095" width="0.045" height="0.045" depth="0.18" color="#465461"></a-box>
-      <a-box position="0 -0.075 0.045" width="0.055" height="0.13" depth="0.06" rotation="-12 0 0" color="#202832"></a-box>
-      <a-cylinder position="0 0 -0.19" rotation="90 0 0" radius="0.018" height="0.09" color="#9daebb"></a-cylinder>
-      <a-box position="0 0.055 0.01" width="0.025" height="0.012" depth="0.07" color="#ff334f"></a-box>
-    </a-entity>
-  </a-entity>
-  <a-entity id="rightHand" meta-touch-controls="hand: right; model: true"></a-entity>
-
-  <a-entity id="targets"></a-entity>
-</a-scene>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-(function () {
-  const scene = document.querySelector('a-scene');
-  const targetsRoot = document.querySelector('#targets');
-  const camera = document.querySelector('#cam');
-  const rig = document.querySelector('#rig');
-  const leftHand = document.querySelector('#leftHand');
-  const scoreEl = document.querySelector('#score');
-  const timeEl = document.querySelector('#time');
-  const overlay = document.querySelector('#overlay');
-  const desktopGun = document.querySelector('#desktopGun');
+(()=>{
+const R = THREE;
 
-  let targets = [], score = 0, lastPos = null, lastRot = null, timeScale = 0.08, started = false;
-  const vA = new THREE.Vector3(), vB = new THREE.Vector3(), vDir = new THREE.Vector3();
-  const raycaster = new THREE.Raycaster();
+/* ---------- renderer / scene ---------- */
+const renderer = new R.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = R.PCFSoftShadowMap;
+renderer.xr.enabled = true;
+renderer.xr.setReferenceSpaceType('local-floor');
+document.body.appendChild(renderer.domElement);
 
-  function makeTarget(x, z, phase) {
-    const root = document.createElement('a-entity');
-    root.setAttribute('position', `${x} 0 ${z}`);
-    root.classList.add('target');
-    const torso = document.createElement('a-box');
-    torso.setAttribute('position','0 1.15 0');
-    torso.setAttribute('width','0.42'); torso.setAttribute('height','0.72'); torso.setAttribute('depth','0.25');
-    torso.setAttribute('color','#ff2948'); torso.setAttribute('material','roughness: 0.72');
-    const head = document.createElement('a-sphere');
-    head.setAttribute('position','0 1.72 0'); head.setAttribute('radius','0.19'); head.setAttribute('color','#ff5268');
-    const armL = document.createElement('a-box'); armL.setAttribute('position','-0.32 1.2 0'); armL.setAttribute('width','0.16'); armL.setAttribute('height','0.58'); armL.setAttribute('depth','0.17'); armL.setAttribute('color','#d91f3b');
-    const armR = document.createElement('a-box'); armR.setAttribute('position','0.32 1.2 0'); armR.setAttribute('width','0.16'); armR.setAttribute('height','0.58'); armR.setAttribute('depth','0.17'); armR.setAttribute('color','#d91f3b');
-    const legL = document.createElement('a-box'); legL.setAttribute('position','-0.13 0.52 0'); legL.setAttribute('width','0.17'); legL.setAttribute('height','0.55'); legL.setAttribute('depth','0.19'); legL.setAttribute('color','#b81731');
-    const legR = document.createElement('a-box'); legR.setAttribute('position','0.13 0.52 0'); legR.setAttribute('width','0.17'); legR.setAttribute('height','0.55'); legR.setAttribute('depth','0.19'); legR.setAttribute('color','#b81731');
-    root.append(torso, head, armL, armR, legL, legR);
-    targetsRoot.appendChild(root);
-    targets.push({el:root, x:x, z:z, phase:phase, alive:true, parts:[torso,head,armL,armR,legL,legR], fall:0});
+const scene = new R.Scene();
+scene.background = new R.Color(0xeef3fa);
+scene.fog = new R.Fog(0xeef3fa,14,46);
+
+const camera = new R.PerspectiveCamera(70,innerWidth/innerHeight,0.05,100);
+const rig = new R.Group();
+scene.add(rig);
+rig.add(camera);
+camera.position.set(0,1.6,0);
+rig.position.set(0,0,9);
+
+/* ---------- lighting (white facility + real shadows) ---------- */
+scene.add(new R.HemisphereLight(0xffffff,0xaebbd0,0.62));
+const sun = new R.DirectionalLight(0xffffff,0.9);
+sun.position.set(7,20,9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+const sc = sun.shadow.camera;
+sc.left=-17; sc.right=17; sc.top=17; sc.bottom=-17; sc.near=1; sc.far=50;
+sun.shadow.bias = -0.0006;
+scene.add(sun); scene.add(sun.target);
+
+/* ---------- facility ---------- */
+function tileTex(rx,ry){
+  const c=document.createElement('canvas'); c.width=c.height=256;
+  const g=c.getContext('2d');
+  g.fillStyle='#f6f8fb'; g.fillRect(0,0,256,256);
+  g.strokeStyle='#ccd4de'; g.lineWidth=4; g.strokeRect(0,0,256,256);
+  const t=new R.CanvasTexture(c);
+  t.wrapS=t.wrapT=R.RepeatWrapping; t.repeat.set(rx,ry); t.anisotropy=4;
+  return t;
+}
+const floorMat = new R.MeshStandardMaterial({map:tileTex(12,12),roughness:.9});
+const wallMat  = new R.MeshStandardMaterial({map:tileTex(12,2.5),roughness:.95});
+const floor = new R.Mesh(new R.PlaneGeometry(24,24),floorMat);
+floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+const ceil = new R.Mesh(new R.PlaneGeometry(24,24),new R.MeshStandardMaterial({color:0xf4f7fb,roughness:1}));
+ceil.rotation.x=Math.PI/2; ceil.position.y=5; scene.add(ceil);
+[[0,-12,0],[0,12,Math.PI],[-12,0,Math.PI/2],[12,0,-Math.PI/2]].forEach(([x,z,ry])=>{
+  const w=new R.Mesh(new R.PlaneGeometry(24,5),wallMat);
+  w.position.set(x,2.5,z); w.rotation.y=ry; w.receiveShadow=true; scene.add(w);
+});
+// ceiling light strips
+const stripMat=new R.MeshBasicMaterial({color:0xffffff,fog:false});
+for(let x=-8;x<=8;x+=4){
+  const s=new R.Mesh(new R.BoxGeometry(0.6,0.05,18),stripMat);
+  s.position.set(x,4.96,0); scene.add(s);
+}
+// blue trim
+const trimMat=new R.MeshBasicMaterial({color:0x2b6cff});
+[[0,-11.97,24,0.1,0.03],[0,11.97,24,0.1,0.03],[-11.97,0,0.03,0.1,24],[11.97,0,0.03,0.1,24]].forEach(([x,z,w,h,d])=>{
+  const t=new R.Mesh(new R.BoxGeometry(w,h,d),trimMat); t.position.set(x,1.3,z); scene.add(t);
+});
+
+const obstacles=[];
+const solidMat=new R.MeshStandardMaterial({color:0xf8f9fb,roughness:.8});
+function addBox(x,z,w,h,d){
+  const m=new R.Mesh(new R.BoxGeometry(w,h,d),solidMat);
+  m.position.set(x,h/2,z); m.castShadow=true; m.receiveShadow=true;
+  scene.add(m); m.updateMatrixWorld(true);
+  obstacles.push(new R.Box3().setFromObject(m));
+}
+[[-6,-6],[6,-6],[-6,2],[6,2],[0,-3]].forEach(([x,z])=>addBox(x,z,0.9,5,0.9));
+addBox(-4,5,3,1.1,0.35); addBox(4,5,3,1.1,0.35); addBox(0,-8.5,4,1.1,0.35);
+[[-9,-2],[9,-2],[-9,7],[9,7],[-3,-9],[3.5,-1]].forEach(([x,z])=>addBox(x,z,1.2,1.2,1.2));
+
+function pushOut(p,r){
+  for(const b of obstacles){
+    if(p.x>b.min.x-r&&p.x<b.max.x+r&&p.z>b.min.z-r&&p.z<b.max.z+r){
+      const l=p.x-(b.min.x-r), rr=(b.max.x+r)-p.x, f=p.z-(b.min.z-r), bk=(b.max.z+r)-p.z;
+      const m=Math.min(l,rr,f,bk);
+      if(m===l)p.x=b.min.x-r; else if(m===rr)p.x=b.max.x+r; else if(m===f)p.z=b.min.z-r; else p.z=b.max.z+r;
+    }
   }
+  const L=11.6; p.x=Math.max(-L,Math.min(L,p.x)); p.z=Math.max(-L,Math.min(L,p.z));
+}
 
-  function resetTargets() {
-    targets.forEach(t => t.el.remove());
-    targets = []; score = 0; scoreEl.textContent = score;
-    makeTarget(-2.8,-7.2,0.2); makeTarget(0.3,-9.4,1.5); makeTarget(2.9,-7.7,2.8);
-    makeTarget(-1.5,-11,3.6); makeTarget(4.2,-10.5,4.3);
+/* ---------- audio ---------- */
+let ac=null;
+function ensureAudio(){ try{ if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended') ac.resume(); }catch(e){} }
+function beep(f,d,type='square',v=.05,slide=0){
+  try{
+    if(!ac) return;
+    const o=ac.createOscillator(), g=ac.createGain(), t=ac.currentTime;
+    o.type=type; o.frequency.setValueAtTime(f,t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);
+    g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+d);
+  }catch(e){}
+}
+
+/* ---------- text panels ---------- */
+function makePanel(w,h,cw,ch){
+  const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+  const ctx=c.getContext('2d'); const tex=new R.CanvasTexture(c);
+  const mat=new R.MeshBasicMaterial({map:tex,transparent:true,depthTest:false,fog:false});
+  const mesh=new R.Mesh(new R.PlaneGeometry(w,h),mat); mesh.renderOrder=999;
+  return {mesh,draw(lines){
+    ctx.clearRect(0,0,cw,ch);
+    ctx.fillStyle='rgba(8,20,70,0.85)'; ctx.fillRect(0,0,cw,ch);
+    ctx.strokeStyle='#4f8bff'; ctx.lineWidth=6; ctx.strokeRect(3,3,cw-6,ch-6);
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    const total=lines.reduce((a,l)=>a+l.size*1.25,0);
+    let y=(ch-total)/2;
+    for(const l of lines){
+      ctx.font='bold '+l.size+'px system-ui,sans-serif'; ctx.fillStyle=l.color||'#fff';
+      y+=l.size*0.625; ctx.fillText(l.text,cw/2,y); y+=l.size*0.625;
+    }
+    tex.needsUpdate=true;
+  }};
+}
+const msg=makePanel(2.4,1.2,1024,512);
+scene.add(msg.mesh);
+let msgT=0;
+
+/* ---------- gun ---------- */
+function buildGun(){
+  const g=new R.Group();
+  const dark=new R.MeshStandardMaterial({color:0x14203f,roughness:.4,metalness:.3});
+  const acc=new R.MeshBasicMaterial({color:0x3d8bff});
+  const add=(geo,mat,x,y,z,rx)=>{const m=new R.Mesh(geo,mat);m.position.set(x,y,z);if(rx)m.rotation.x=rx;m.castShadow=true;g.add(m);return m;};
+  add(new R.BoxGeometry(0.04,0.055,0.2),dark,0,0,-0.08);
+  add(new R.BoxGeometry(0.022,0.022,0.1),dark,0,0.005,-0.23);
+  add(new R.BoxGeometry(0.035,0.09,0.045),dark,0,-0.06,-0.02,0.25);
+  add(new R.BoxGeometry(0.042,0.008,0.18),acc,0,0.03,-0.08);
+  const lg=new R.BufferGeometry().setFromPoints([new R.Vector3(0,0,-0.3),new R.Vector3(0,0,-12)]);
+  g.add(new R.Line(lg,new R.LineBasicMaterial({color:0x2b7bff,transparent:true,opacity:.5})));
+  return g;
+}
+const gunVR=buildGun(); gunVR.visible=false; scene.add(gunVR);
+const wrist=makePanel(0.2,0.1,256,128);
+wrist.mesh.position.set(0,0.09,0.06); wrist.mesh.rotation.x=-0.9;
+gunVR.add(wrist.mesh);
+const gunDesk=buildGun(); gunDesk.position.set(0.2,-0.2,-0.35); gunDesk.visible=false; camera.add(gunDesk);
+
+/* ---------- game state ---------- */
+const enemies=[], ebullets=[], pbullets=[], shards=[];
+let wave=0, kills=0, state='intro', stateT=0, toSpawn=0, spawnT=0, ts=0.1, dead=false, deadT=0;
+let desktop=false, mouseDown=false, lastShot=0, hudT=0, skipSpeed=true, firstFrame=true;
+const keys={}; const prev={x:false,y:false,trig:false};
+let leftSrc=null, leftGP=null, hasCtrl=false, lastHasCtrl=null;
+
+const headLocal=new R.Vector3(0,1.6,0), headLQ=new R.Quaternion();
+const ctrlLocal=new R.Vector3(), ctrlLQ=new R.Quaternion();
+const head=new R.Vector3(), headQ=new R.Quaternion(), ctrlW=new R.Vector3(), ctrlQ=new R.Quaternion();
+const prevHead=new R.Vector3(), prevHeadQ=new R.Quaternion(), prevCtrl=new R.Vector3();
+const tv=new R.Vector3(), fwd=new R.Vector3(), right=new R.Vector3();
+
+function toWorld(){
+  head.copy(headLocal).applyQuaternion(rig.quaternion).add(rig.position);
+  headQ.copy(rig.quaternion).multiply(headLQ);
+  ctrlW.copy(ctrlLocal).applyQuaternion(rig.quaternion).add(rig.position);
+  ctrlQ.copy(rig.quaternion).multiply(ctrlLQ);
+}
+function flatForward(out){
+  out.set(0,0,-1).applyQuaternion(headQ); out.y=0;
+  if(out.lengthSq()<1e-4) out.set(0,0,-1);
+  return out.normalize();
+}
+function readPoses(frame){
+  if(frame){
+    const rs=renderer.xr.getReferenceSpace();
+    if(!rs) return false;
+    const vp=frame.getViewerPose(rs);
+    if(vp){ const p=vp.transform.position,o=vp.transform.orientation; headLocal.set(p.x,p.y,p.z); headLQ.set(o.x,o.y,o.z,o.w); }
+    hasCtrl=false; leftGP=null; leftSrc=null;
+    const sess=renderer.xr.getSession();
+    if(sess) for(const s of sess.inputSources){
+      if(s.handedness==='left' && s.gamepad && s.targetRaySpace){
+        const gp=frame.getPose(s.targetRaySpace,rs);
+        if(gp){ const p=gp.transform.position,o=gp.transform.orientation;
+          ctrlLocal.set(p.x,p.y,p.z); ctrlLQ.set(o.x,o.y,o.z,o.w); hasCtrl=true; leftGP=s.gamepad; leftSrc=s; }
+        break;
+      }
+    }
+  } else {
+    headLocal.copy(camera.position); headLQ.copy(camera.quaternion);
+    ctrlLocal.copy(headLocal); ctrlLQ.copy(headLQ); hasCtrl=true;
   }
+  toWorld();
+  return true;
+}
+function snapTurn(a){
+  const b=head.clone();
+  rig.rotation.y+=a;
+  toWorld();
+  rig.position.x+=b.x-head.x; rig.position.z+=b.z-head.z;
+  toWorld();
+  skipSpeed=true;
+}
 
-  function shoot(origin, direction) {
-    let best = null, bestD = 40;
-    targets.forEach(t => {
-      if (!t.alive) return;
-      t.el.object3D.updateMatrixWorld(true);
-      const center = new THREE.Vector3();
-      t.el.object3D.getWorldPosition(center);
-      center.y += 1.15;
-      const toCenter = center.clone().sub(origin);
-      const along = toCenter.dot(direction);
-      if (along < 0 || along > bestD) return;
-      const nearest = origin.clone().add(direction.clone().multiplyScalar(along));
-      const dist = nearest.distanceTo(center);
-      // A forgiving capsule-like target volume makes controller aiming less frustrating.
-      if (dist < 0.58 && along < bestD) { best = t; bestD = along; }
-    });
-    const reticle = document.querySelector('#reticle');
-    if (best) {
-      reticle.classList.add('hit');
-      setTimeout(() => reticle.classList.remove('hit'), 110);
-      best.alive = false;
-      best.el.removeAttribute('animation__fall');
-      best.el.removeAttribute('animation__drop');
-      const start = best.el.object3D.position.clone();
-      const endY = 0.06;
-      best.fallStart = performance.now();
-      best.fallFrom = start;
-      best.el.setAttribute('animation__fall','property: rotation; to: 75 0 12; dur: 360; easing: easeInQuad');
-      best.el.setAttribute('animation__drop','property: position; to: '+start.x+' '+endY+' '+start.z+'; dur: 360; easing: easeInQuad');
-      best.parts.forEach((part,i) => {
-        part.setAttribute('material','color: #ff2948; roughness: 0.9');
-        if (i===1) part.setAttribute('color','#ff8796');
-      });
-      score++; scoreEl.textContent = score;
-      if (score >= 5) {
-        setTimeout(() => {
-          const panel = document.querySelector('#panel');
-          panel.innerHTML = '<h1><span>AREA</span> CLEAR</h1><p>You cleared the prototype arena.</p><button id="again">PLAY AGAIN</button><p id="hint">Move to make time flow. Stay still to line up your next shot.</p>';
-          overlay.style.display='flex';
-          document.querySelector('#again').onclick=()=>{ resetTargets(); overlay.style.display='none'; };
-        }, 450);
+/* ---------- messages ---------- */
+function showMsg(lines,secs,front){
+  msg.draw(lines); msg.mesh.visible=true; msgT=secs;
+  if(front){
+    flatForward(fwd);
+    msg.mesh.scale.setScalar(0.6);
+    msg.mesh.position.set(head.x+fwd.x*1.6, Math.max(1.2,head.y-0.05), head.z+fwd.z*1.6);
+    msg.mesh.lookAt(head);
+  } else {
+    msg.mesh.scale.setScalar(1);
+    msg.mesh.position.set(0,1.8,5.2); msg.mesh.rotation.set(0,0,0);
+  }
+}
+function showIntro(){
+  const inXR=renderer.xr.isPresenting;
+  const lines=[{text:'SUPERCOLD',size:110,color:'#7fb2ff'},{text:'Time only moves when you move.',size:46}];
+  if(inXR){
+    lines.push({text:'Left stick: move   X / Y: turn',size:38},{text:'Left trigger: shoot',size:38});
+    lines.push(hasCtrl?{text:'PULL THE TRIGGER TO START',size:44,color:'#9fe0ff'}:{text:'Turn on your LEFT controller',size:44,color:'#ff9f9f'});
+  } else {
+    lines.push({text:'WASD move   Mouse look',size:38},{text:'Click to shoot',size:38},{text:'CLICK TO START',size:44,color:'#9fe0ff'});
+  }
+  showMsg(lines,0,false);
+}
+
+/* ---------- enemies ---------- */
+const bodyMat=new R.MeshStandardMaterial({color:0x2f6bff,roughness:.55,emissive:0x0a2a9a,emissiveIntensity:.35});
+const headMat=new R.MeshStandardMaterial({color:0x6aa0ff,roughness:.5,emissive:0x1a3fa0,emissiveIntensity:.3});
+const eGunMat=new R.MeshStandardMaterial({color:0x0b1636,roughness:.4});
+const torsoGeo=new R.BoxGeometry(0.5,0.7,0.28), headGeo=new R.SphereGeometry(0.14,14,10);
+const legGeo=new R.BoxGeometry(0.17,0.78,0.17), armGeo=new R.BoxGeometry(0.12,0.6,0.12), eGunGeo=new R.BoxGeometry(0.06,0.3,0.06);
+
+function makeEnemy(x,z){
+  const g=new R.Group(); g.position.set(x,0,z);
+  const add=(geo,mat,px,py,pz,parent)=>{const m=new R.Mesh(geo,mat);m.position.set(px,py,pz);m.castShadow=true;m.receiveShadow=true;(parent||g).add(m);return m;};
+  add(torsoGeo,bodyMat,0,1.1,0);
+  add(headGeo,headMat,0,1.62,0);
+  const legL=new R.Group(); legL.position.set(-0.12,0.78,0); g.add(legL); add(legGeo,bodyMat,0,-0.39,0,legL);
+  const legR=new R.Group(); legR.position.set(0.12,0.78,0); g.add(legR); add(legGeo,bodyMat,0,-0.39,0,legR);
+  const armL=new R.Group(); armL.position.set(-0.33,1.4,0); g.add(armL); add(armGeo,bodyMat,0,-0.3,0,armL);
+  const armR=new R.Group(); armR.position.set(0.33,1.4,0.05); armR.rotation.x=-1.4; g.add(armR);
+  add(armGeo,bodyMat,0,-0.3,0,armR); add(eGunGeo,eGunMat,0,-0.68,0,armR);
+  scene.add(g);
+  return {g,legL,legR,phase:Math.random()*6,shootT:2.5+Math.random()*2.5,strafe:Math.random()<.5?1:-1,strafeT:1+Math.random()*3,grow:0};
+}
+function spawnEnemy(){
+  flatForward(fwd);
+  let x=0,z=-10,ok=false;
+  for(let i=0;i<40&&!ok;i++){
+    x=(Math.random()-.5)*21; z=(Math.random()-.5)*21;
+    const dx=x-head.x, dz=z-head.z, d=Math.hypot(dx,dz);
+    if(d<9) continue;
+    if(i<25 && (dx*fwd.x+dz*fwd.z)/d<0.3) continue;
+    const p={x,z}; const ox=p.x,oz=p.z; pushOut(p,0.6);
+    if(Math.abs(p.x-ox)>0.01||Math.abs(p.z-oz)>0.01) continue;
+    ok=true;
+  }
+  const e=makeEnemy(x,z); e.g.scale.setScalar(0.2); enemies.push(e);
+}
+function killEnemy(e){
+  const ep=e.g.position;
+  for(let i=0;i<26;i++){
+    const s=0.07+Math.random()*0.12;
+    const m=new R.Mesh(new R.BoxGeometry(s,s,s),Math.random()<.2?headMat:bodyMat);
+    m.position.set(ep.x+(Math.random()-.5)*0.4,0.1+Math.random()*1.6,ep.z+(Math.random()-.5)*0.4);
+    m.castShadow=true; scene.add(m);
+    shards.push({m,v:new R.Vector3((Math.random()-.5)*3,Math.random()*3+1,(Math.random()-.5)*3),av:new R.Vector3(Math.random()*8,Math.random()*8,Math.random()*8),life:4,s});
+  }
+  while(shards.length>350){ const o=shards.shift(); scene.remove(o.m); o.m.geometry.dispose(); }
+  scene.remove(e.g);
+  const i=enemies.indexOf(e); if(i>=0) enemies.splice(i,1);
+  kills++;
+  beep(260,.25,'sawtooth',.08,-200);
+}
+
+/* ---------- bullets ---------- */
+const eCoreGeo=new R.SphereGeometry(0.07,10,8), eHaloGeo=new R.SphereGeometry(0.13,10,8);
+const eCoreMat=new R.MeshBasicMaterial({color:0x0030c8}), eHaloMat=new R.MeshBasicMaterial({color:0x66aaff,transparent:true,opacity:.45});
+function fireEnemy(e,speed){
+  const ep=e.g.position, yaw=e.g.rotation.y;
+  const muzzle=new R.Vector3(ep.x+Math.sin(yaw)*0.65,1.4,ep.z+Math.cos(yaw)*0.65);
+  const target=head.clone(); target.y-=0.2; target.x+=(Math.random()-.5)*0.3; target.z+=(Math.random()-.5)*0.3;
+  const dir=target.sub(muzzle).normalize();
+  const m=new R.Group(); m.position.copy(muzzle);
+  const core=new R.Mesh(eCoreGeo,eCoreMat); core.castShadow=true; m.add(core); m.add(new R.Mesh(eHaloGeo,eHaloMat));
+  scene.add(m); ebullets.push({m,dir,speed});
+  beep(320,.08,'square',.04);
+}
+const pBulGeo=new R.BoxGeometry(0.025,0.025,0.3), pBulMat=new R.MeshBasicMaterial({color:0x0077ff});
+function tryShoot(now){
+  if(dead||now-lastShot<0.32) return;
+  if(!(desktop&&!renderer.xr.isPresenting) && !hasCtrl) return;
+  lastShot=now;
+  const q=ctrlQ, dir=new R.Vector3(0,0,-1).applyQuaternion(q);
+  const pos=new R.Vector3();
+  if(renderer.xr.isPresenting) pos.set(0,0,-0.3).applyQuaternion(q).add(ctrlW);
+  else pos.copy(head).addScaledVector(dir,0.4); pos.y-=renderer.xr.isPresenting?0:0.05;
+  const m=new R.Mesh(pBulGeo,pBulMat); m.position.copy(pos); m.quaternion.copy(q); m.castShadow=true; scene.add(m);
+  pbullets.push({m,dir,speed:28});
+  beep(900,.06,'square',.06,-500);
+  try{
+    if(leftSrc&&leftSrc.gamepad){
+      const a=leftSrc.gamepad.hapticActuators&&leftSrc.gamepad.hapticActuators[0];
+      if(a&&a.pulse) a.pulse(0.6,40);
+      else if(leftSrc.gamepad.vibrationActuator) leftSrc.gamepad.vibrationActuator.playEffect('dual-rumble',{duration:40,strongMagnitude:.6,weakMagnitude:.6});
+    }
+  }catch(e){}
+}
+function stepBullets(list,dts,isPlayer){
+  for(let i=list.length-1;i>=0;i--){
+    const b=list[i], dist=b.speed*dts, n=Math.max(1,Math.ceil(dist/0.12)), stp=dist/n;
+    let gone=false;
+    for(let k=0;k<n&&!gone;k++){
+      b.m.position.addScaledVector(b.dir,stp);
+      const p=b.m.position;
+      if(p.y<0.02||p.y>5||Math.abs(p.x)>12||Math.abs(p.z)>12){gone=true;break;}
+      for(const o of obstacles) if(o.containsPoint(p)){gone=true;break;}
+      if(gone)break;
+      if(isPlayer){
+        for(const e of enemies){
+          const ep=e.g.position, dx=p.x-ep.x, dz=p.z-ep.z;
+          if(dx*dx+dz*dz<0.16&&p.y<1.85&&p.y>0){killEnemy(e);gone=true;break;}
+        }
+      } else if(!dead){
+        const dx=p.x-head.x, dz=p.z-head.z;
+        if(dx*dx+dz*dz<0.07&&p.y<head.y+0.15&&p.y>head.y-0.65){hitPlayer();gone=true;}
+      }
+    }
+    if(gone){scene.remove(b.m);list.splice(i,1);}
+  }
+}
+function hitPlayer(){
+  dead=true; deadT=0; state='dead';
+  beep(140,.6,'sawtooth',.12,-90);
+  showMsg([{text:'SHATTERED',size:100,color:'#7fb2ff'},{text:'WAVE '+wave+'   KILLS '+kills,size:50},{text:'PULL THE TRIGGER TO RESTART',size:40,color:'#9fe0ff'}],0,true);
+}
+
+/* ---------- waves ---------- */
+function startWave(){
+  wave++; toSpawn=Math.min(2+wave,10); state='playing'; spawnT=0.5;
+  showMsg([{text:'WAVE '+wave,size:120,color:'#7fb2ff'}],2.2,true);
+}
+function resetGame(){
+  enemies.forEach(e=>scene.remove(e.g)); enemies.length=0;
+  [ebullets,pbullets].forEach(l=>{l.forEach(b=>scene.remove(b.m));l.length=0;});
+  shards.forEach(s=>{scene.remove(s.m);s.m.geometry.dispose();}); shards.length=0;
+  wave=0; kills=0; dead=false; toSpawn=0; state='intro'; ts=0.1;
+  rig.rotation.set(0,0,0); rig.position.set(0,0,9);
+  toWorld(); skipSpeed=true; showIntro();
+}
+
+/* ---------- main loop ---------- */
+let lastMs=performance.now();
+function frame(t,xf){
+  const nowMs=performance.now();
+  const dt=Math.max(0.001,Math.min(0.05,(nowMs-lastMs)/1000)); lastMs=nowMs;
+  const now=nowMs/1000;
+  const inXR=!!(renderer.xr.isPresenting&&xf);
+
+  if(inXR||desktop){
+    if(readPoses(inXR?xf:null)){
+      if(firstFrame){ firstFrame=false; resetGame(); readPoses(inXR?xf:null); }
+      if(lastHasCtrl!==hasCtrl && state==='intro'){ lastHasCtrl=hasCtrl; showIntro(); }
+
+      /* input */
+      let ix=0,iy=0,trig=false;
+      if(inXR&&leftGP){
+        const a=leftGP.axes, ax=a.length>=4?a[2]:a[0], ay=a.length>=4?a[3]:a[1];
+        ix=Math.abs(ax)>.15?ax:0; iy=Math.abs(ay)>.15?-ay:0;
+        const b=leftGP.buttons;
+        trig=!!(b[0]&&b[0].pressed);
+        const bx=!!(b[4]&&b[4].pressed), by=!!(b[5]&&b[5].pressed);
+        if(bx&&!prev.x) snapTurn(Math.PI/4);
+        if(by&&!prev.y) snapTurn(-Math.PI/4);
+        prev.x=bx; prev.y=by;
+      } else if(!inXR){
+        ix=(keys.KeyD?1:0)-(keys.KeyA?1:0); iy=(keys.KeyW?1:0)-(keys.KeyS?1:0); trig=mouseDown;
+      }
+      const trigEdge=trig&&!prev.trig; prev.trig=trig;
+
+      if(!dead&&(ix||iy)){
+        flatForward(fwd); right.set(-fwd.z,0,fwd.x);
+        rig.position.addScaledVector(fwd,iy*2.4*dt).addScaledVector(right,ix*2.4*dt);
+        toWorld();
+      }
+      { const p={x:head.x,z:head.z}; pushOut(p,0.3); rig.position.x+=p.x-head.x; rig.position.z+=p.z-head.z; toWorld(); }
+
+      /* time = how much YOU move */
+      if(skipSpeed){ prevHead.copy(head); prevHeadQ.copy(headQ); prevCtrl.copy(ctrlW); skipSpeed=false; }
+      let s=head.distanceTo(prevHead)/dt;
+      s+=2*Math.acos(Math.min(1,Math.abs(headQ.dot(prevHeadQ))))/dt*0.12;
+      if(inXR&&hasCtrl) s+=ctrlW.distanceTo(prevCtrl)/dt*0.35;
+      prevHead.copy(head); prevHeadQ.copy(headQ); prevCtrl.copy(ctrlW);
+      s=Math.max(0,s-0.06);
+      const target=dead?0.07:Math.min(1,0.04+s/1.0);
+      ts+=(target-ts)*(1-Math.exp(-dt*(target>ts?14:6)));
+      const dts=dt*ts;
+
+      /* state machine */
+      if(state==='intro'){ if(trigEdge){ ensureAudio(); msg.mesh.visible=false; startWave(); } }
+      else if(state==='dead'){ deadT+=dt; if(deadT>1&&trigEdge) resetGame(); }
+      else {
+        if(trigEdge) tryShoot(now);
+        if(state==='playing'){
+          spawnT-=dt;
+          const maxAlive=Math.min(3+Math.floor(wave/2),7);
+          if(toSpawn>0&&enemies.length<maxAlive&&spawnT<=0){ spawnEnemy(); toSpawn--; spawnT=1.0; }
+          if(toSpawn===0&&enemies.length===0){
+            state='between'; stateT=2.5;
+            showMsg([{text:'WAVE CLEAR',size:100,color:'#9fe0ff'}],2.2,true);
+          }
+        } else if(state==='between'){ stateT-=dt; if(stateT<=0) startWave(); }
+      }
+
+      /* enemies */
+      const bSpeed=Math.min(5+wave*0.2,8), interval=Math.max(1.4,3.2-wave*0.15);
+      for(const e of enemies){
+        const g=e.g, p=g.position;
+        if(e.grow<1){ e.grow=Math.min(1,e.grow+dts*2); g.scale.setScalar(0.2+0.8*e.grow); }
+        const dx=head.x-p.x, dz=head.z-p.z, dist=Math.max(0.001,Math.hypot(dx,dz));
+        g.rotation.y=Math.atan2(dx,dz);
+        const nx=dx/dist, nz=dz/dist;
+        let mv=0; if(dist>7.5) mv=1; else if(dist<4) mv=-0.7;
+        e.strafeT-=dts; if(e.strafeT<=0){ e.strafe=-e.strafe; e.strafeT=2+Math.random()*3; }
+        const vx=nx*mv*1.5+(-nz)*e.strafe*0.7, vz=nz*mv*1.5+nx*e.strafe*0.7;
+        p.x+=vx*dts; p.z+=vz*dts;
+        pushOut(p,0.4);
+        for(const o of enemies){ if(o===e) continue;
+          const ox=p.x-o.g.position.x, oz=p.z-o.g.position.z, d=Math.hypot(ox,oz);
+          if(d<0.8&&d>0.001){ p.x+=ox/d*(0.8-d)*0.5; p.z+=oz/d*(0.8-d)*0.5; } }
+        e.phase+=dts*7; e.legL.rotation.x=Math.sin(e.phase)*0.6; e.legR.rotation.x=-Math.sin(e.phase)*0.6;
+        if(state==='playing'&&!dead&&e.grow>=1){
+          e.shootT-=dts;
+          if(e.shootT<=0){ fireEnemy(e,bSpeed); e.shootT=interval+Math.random()*1.2; }
+        }
+      }
+      stepBullets(pbullets,dts,true);
+      stepBullets(ebullets,dts,false);
+
+      /* shards */
+      for(let i=shards.length-1;i>=0;i--){
+        const sh=shards[i];
+        sh.v.y-=9.8*dts; sh.m.position.addScaledVector(sh.v,dts);
+        sh.m.rotation.x+=sh.av.x*dts; sh.m.rotation.y+=sh.av.y*dts; sh.m.rotation.z+=sh.av.z*dts;
+        if(sh.m.position.y<sh.s/2){ sh.m.position.y=sh.s/2; sh.v.y*=-0.3; sh.v.x*=0.6; sh.v.z*=0.6; sh.av.multiplyScalar(0.6); }
+        sh.life-=dts;
+        if(sh.life<1) sh.m.scale.setScalar(Math.max(0.001,sh.life));
+        if(sh.life<=0){ scene.remove(sh.m); sh.m.geometry.dispose(); shards.splice(i,1); }
+      }
+
+      /* message timer */
+      if(msgT>0){ msgT-=dt; if(msgT<=0) msg.mesh.visible=false; }
+
+      /* gun + HUD */
+      gunVR.visible=inXR&&hasCtrl;
+      gunDesk.visible=!inXR&&desktop;
+      if(gunVR.visible){ gunVR.position.copy(ctrlW); gunVR.quaternion.copy(ctrlQ); }
+      hudT-=dt;
+      if(hudT<=0){
+        hudT=0.2;
+        if(gunVR.visible) wrist.draw([{text:'WAVE '+wave,size:30,color:'#7fb2ff'},{text:'KILLS '+kills,size:28},{text:'TIME '+Math.round(ts*100)+'%',size:28,color:'#9fe0ff'}]);
+        if(desktop&&!inXR) hud.textContent='WAVE '+wave+'\nKILLS '+kills+'\nTIME '+Math.round(ts*100)+'%';
       }
     }
   }
+  renderer.render(scene,camera);
+}
+renderer.setAnimationLoop(frame);
 
-  function fireFromController() {
-    if (!scene.is('vr-mode')) return;
-    const obj = leftHand.object3D;
-    if (!obj || !leftHand.components['meta-touch-controls']) return;
-    obj.updateMatrixWorld(true);
-    // Aim from the controller's tracked pose, not the headset/camera pose.
-    const q = obj.getWorldQuaternion(new THREE.Quaternion());
-    vDir.set(0, 0, -1).applyQuaternion(q).normalize();
-    vA.setFromMatrixPosition(obj.matrixWorld);
-    // Move the shot origin slightly forward from the controller grip.
-    vA.add(vDir.clone().multiplyScalar(0.18));
-    shoot(vA.clone(), vDir.clone());
+/* ---------- UI / input wiring ---------- */
+const ui=document.getElementById('ui'), btnVR=document.getElementById('btnVR'), btnDesk=document.getElementById('btnDesk');
+const note=document.getElementById('note'), hud=document.getElementById('hud'), cross=document.getElementById('cross');
+
+if(navigator.xr){
+  navigator.xr.isSessionSupported('immersive-vr').then(ok=>{
+    if(ok) btnVR.style.display='block'; else note.textContent='VR is not available in this browser - desktop mode only.';
+  }).catch(()=>{ note.textContent='Could not check VR support.'; });
+} else note.textContent='WebXR not available here - open this file in the Quest Browser for VR.';
+
+btnVR.onclick=async()=>{
+  ensureAudio();
+  try{
+    const s=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor']});
+    await renderer.xr.setSession(s);
+    ui.style.display='none'; desktop=false; firstFrame=true;
+  }catch(err){ note.textContent='Could not start VR: '+err.message; }
+};
+renderer.xr.addEventListener('sessionend',()=>{
+  ui.style.display='flex'; gunVR.visible=false; hasCtrl=false;
+  camera.position.set(0,1.6,0); camera.quaternion.identity(); rig.rotation.set(0,0,0); rig.position.set(0,0,9);
+  firstFrame=true;
+});
+btnDesk.onclick=()=>{
+  ensureAudio(); desktop=true; firstFrame=true; ui.style.display='none';
+  hud.style.display='block'; cross.style.display='block';
+  try{ renderer.domElement.requestPointerLock(); }catch(e){}
+};
+addEventListener('keydown',e=>{keys[e.code]=true;});
+addEventListener('keyup',e=>{keys[e.code]=false;});
+addEventListener('mousedown',e=>{
+  if(!desktop) return;
+  if(document.pointerLockElement!==renderer.domElement){ try{renderer.domElement.requestPointerLock();}catch(err){} }
+  mouseDown=true;
+});
+addEventListener('mouseup',()=>{mouseDown=false;});
+addEventListener('mousemove',e=>{
+  if(desktop&&document.pointerLockElement===renderer.domElement){
+    rig.rotation.y-=e.movementX*0.0022;
+    camera.rotation.x=Math.max(-1.4,Math.min(1.4,camera.rotation.x-e.movementY*0.0022));
   }
-  leftHand.addEventListener('triggerdown', fireFromController);
-  leftHand.addEventListener('controllerconnected', () => {
-    const gun = document.querySelector('#vrGun');
-    if (gun) gun.setAttribute('visible', true);
-  });
-
-  function desktopShoot() {
-    const camObj = camera.object3D;
-    camObj.updateMatrixWorld(true);
-    camObj.getWorldPosition(vA);
-    vDir.set(0,0,-1).applyQuaternion(camObj.getWorldQuaternion(new THREE.Quaternion())).normalize();
-    shoot(vA.clone(),vDir.clone());
-  }
-  scene.addEventListener('click', () => { if (started && !scene.is('vr-mode')) desktopShoot(); });
-  document.addEventListener('keydown', e => { if (e.code === 'Space') desktopShoot(); });
-  // Phone preview: swipe to look around; in headset, WebXR owns the view.
-  let drag = null;
-  document.addEventListener('pointerdown', e => {
-    if (scene.is('vr-mode') || !started || e.target.closest('button')) return;
-    drag = {x:e.clientX, y:e.clientY};
-  });
-  document.addEventListener('pointermove', e => {
-    if (!drag || scene.is('vr-mode')) return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    camera.object3D.rotation.y -= dx * 0.003;
-    camera.object3D.rotation.x = Math.max(-1.15, Math.min(1.15, camera.object3D.rotation.x - dy * 0.003));
-    drag.x = e.clientX; drag.y = e.clientY;
-  });
-  document.addEventListener('pointerup', () => { drag = null; });
-
-  scene.addEventListener('enter-vr', () => {
-    started = true;
-    const gun = document.querySelector('#vrGun');
-    if (gun) gun.setAttribute('visible', true);
-    desktopGun.setAttribute('visible',false);
-    overlay.style.display = 'none';
-    lastPos = camera.object3D.position.clone();
-    lastRot = camera.object3D.rotation.clone();
-  });
-  scene.addEventListener('exit-vr', () => {
-    desktopGun.setAttribute('visible',true);
-    if (started) overlay.style.display = 'none';
-  });
-
-  scene.addEventListener('loaded', () => {
-    resetTargets();
-    desktopGun.setAttribute('visible',true);
-  });
-
-  document.querySelector('#enterVr').addEventListener('click', () => {
-    const status = document.querySelector('#vrStatus');
-    if (!navigator.xr) {
-      status.textContent = 'WebXR is unavailable in this browser. Open the published HTTPS Pages URL directly in Meta Quest Browser.';
-      return;
-    }
-    started = true;
-    status.textContent = 'Starting VR… accept the browser prompt if it appears.';
-    // Request VR immediately inside the button click. An awaited support check
-    // first can consume the browser's transient user activation.
-    try {
-      const vrResult = scene.enterVR();
-      if (vrResult && typeof vrResult.catch === 'function') {
-        vrResult.catch(err => {
-          status.textContent = 'Could not enter VR: ' + (err && err.message ? err.message : 'session request failed') + '. Confirm this is the HTTPS GitHub Pages URL in Quest Browser.';
-        });
-      }
-    } catch (err) {
-      status.textContent = 'Could not enter VR: ' + (err && err.message ? err.message : 'session request failed') + '. Confirm this is the HTTPS GitHub Pages URL in Quest Browser.';
-    }
-  });
-
-  AFRAME.registerComponent('game-core', {
-    tick: function () {
-      if (!started) return;
-      const p = camera.object3D.position;
-      const r = camera.object3D.rotation;
-      if (!lastPos) { lastPos = p.clone(); lastRot = r.clone(); return; }
-      const move = p.distanceTo(lastPos);
-      const turn = Math.abs(r.x-lastRot.x) + Math.abs(r.y-lastRot.y) + Math.abs(r.z-lastRot.z);
-      const activity = move + turn * 0.55;
-      timeScale = activity > 0.003 ? Math.min(1, 0.12 + activity * 14) : 0.035;
-      timeEl.textContent = timeScale < 0.2 ? 'SLOW' : (timeScale < 0.7 ? 'FLOW' : 'FAST');
-      targets.forEach(t => {
-        if (!t.alive) return;
-        t.phase += 0.012 * timeScale;
-        const x = t.x + Math.sin(t.phase) * 0.32 * timeScale;
-        t.el.object3D.position.x = x;
-        t.el.object3D.position.z = t.z + Math.sin(t.phase*0.7)*0.14*timeScale;
-        t.el.object3D.rotation.y = Math.sin(t.phase)*0.18;
-      });
-      lastPos.copy(p); lastRot.copy(r);
-    }
-  });
-
-  document.querySelector('#start').addEventListener('click', () => {
-    started = true;
-    overlay.style.display = 'none';
-    lastPos = camera.object3D.position.clone();
-    lastRot = camera.object3D.rotation.clone();
-  });
+});
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight);
+});
 })();
 </script>
 </body>
